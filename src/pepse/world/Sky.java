@@ -13,6 +13,7 @@ public class Sky {
     public static GameObject create(Vector2 windowDimensions){
         GameObject sky=new GameObject(Vector2.ZERO,windowDimensions,new RectangleRenderable(BASIC_SKY_COLOR));
         sky.setCoordinateSpace(CoordinateSpace.CAMERA_COORDINATES);
+        return sky;
 
 
 
