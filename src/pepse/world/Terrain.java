@@ -8,12 +8,14 @@ import pepse.utils.NoiseGenerator;
 
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 public class Terrain {
     private static final int TERRAIN_DEPTH = 20;
     private static final Color BASE_GROUND_COLOR = new Color(212, 123, 74);
     private final float groundHeightAtX0;
+    private final HashSet<Integer> generatedColumns= new HashSet<>();
     private final NoiseGenerator noiseGenerator;
     public Terrain(Vector2 windowDimensions, int seed){
         this.groundHeightAtX0=windowDimensions.y()*((float) 2 /3);
@@ -29,7 +31,10 @@ public class Terrain {
        int startX=(int) Math.floor((double) minX / size) * size;
        int endX=(int) Math.ceil((double) maxX / size) * size;
         for (int x = startX; x <= endX; x += size) {
-            // snap the ground height to the block grid
+            if(generatedColumns.contains(x)){
+                continue;
+            }
+            generatedColumns.add(x);
             int topY = (int) (Math.floor(groundHeightAt(x) / size) * size);
 
             for (int i = 0; i < TERRAIN_DEPTH; i++) {
