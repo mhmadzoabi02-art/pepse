@@ -14,6 +14,7 @@ import java.util.List;
 public class Terrain {
     private static final int TERRAIN_DEPTH = 20;
     private static final Color BASE_GROUND_COLOR = new Color(212, 123, 74);
+    private static final String GROUND_TAG = "ground";
     private final float groundHeightAtX0;
     private final HashSet<Integer> generatedColumns= new HashSet<>();
     private final NoiseGenerator noiseGenerator;
@@ -45,7 +46,7 @@ public class Terrain {
                 );
 
                 Block block = new Block(new Vector2(x, y), renderable); // adjust if your ctor differs
-                block.setTag("ground");
+                block.setTag(GROUND_TAG);
                 blocks.add(block);
             }
         }
