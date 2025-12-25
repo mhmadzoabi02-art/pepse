@@ -7,10 +7,20 @@ import danogl.gui.rendering.OvalRenderable;
 import danogl.util.Vector2;
 
 import java.awt.*;
-
+/**
+ * Creates the sun object and animates it in a circular path to simulate a day cycle.
+ * The sun is rendered in camera coordinates so its motion is relative to the screen.
+ */
 public class Sun {
     private static final float SUN_RADIUS = 50f;
     private static final String SUN_TAG = "sun";
+    /**
+     * Creates a sun {@link GameObject} that moves in a circular trajectory over time.
+     *
+     * @param windowDimensions window size used to compute the cycle center and initial position.
+     * @param cycleLength      full length of one sun cycle in seconds.
+     * @return a {@link GameObject} representing the sun.
+     */
     public static GameObject create(Vector2 windowDimensions,float cycleLength){
         GameObject sun=new GameObject(
                 Vector2.ZERO,

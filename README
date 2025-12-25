@@ -1,0 +1,139 @@
+ali.bder,mohamed.zoabi
+327889341,214749210
+
+--------------------------------------------------------------------------------
+Avatar implementation (pepse.world.avatar)
+--------------------------------------------------------------------------------
+Classes/files:
+- Avatar.java (extends GameObject)
+- Energy.java (added by us)
+
+Main design and OOP decisions:
+- State pattern (via enum): Avatar behavior is organized by an enum AvatarState {IDLE, RUN, JUMP}.
+  The current state is updated each frame based on input and physics, and then drives:
+  - Animation selection (idle/run/jump AnimationRenderable)
+  - Energy consumption/regeneration policy
+- Encapsulation + Single Responsibility:
+  - Avatar encapsulates movement, physics setup (gravity), energy logic, and animation switching.
+  - Energy UI is separated into its own class (Energy) whose responsibility is only UI display.
+- Dependency Injection:
+  - Avatar receives UserInputListener and ImageReader through the constructor (no global access).
+- Observer/Callback style (loose coupling):
+  - Energy.create(...) receives a Supplier<Float> (avatar::getEnergy). Energy does not know Avatar;
+    it only “observes” the energy value through a callback, reducing coupling.
+
+How we designed state changes:
+- Each update():
+  - Reads input (left/right/space).
+  - Computes velocity changes.
+  - Chooses AvatarState based on:
+    - not on ground -> JUMP
+    - x velocity != 0 -> RUN
+    - else -> IDLE
+  - Only when state changes we swap the AnimationRenderable (avoids repeated calls each frame).
+
+How we designed energy:
+- Energy is a bounded resource (clamped to [0, MAX_ENERGY])
+maintained inside Avatar (encapsulation).
+- Policy:
+  - RUN drains small energy over time
+  - JUMP drains a fixed amount
+  - IDLE regenerates energy
+- Behavior when energy is low:
+  - On ground, movement is prevented if energy is insufficient (guards/invariants).
+  - UI is updated by Energy class via the Supplier callback.
+
+--------------------------------------------------------------------------------
+Trees / Flora implementation (pepse.world.trees)
+--------------------------------------------------------------------------------
+Classes/files:
+- Flora.java (provided section; implemented/finished by partner)
+- Fruit.java (added by us, and integrated into Flora)
+
+Main design and OOP decisions:
+- Factory method (object creation centralized):
+  - Flora.createInRange(minX, maxX) acts as a factory that
+  creates and returns all vegetation objects
+    (trunk blocks, leaves, fruits). This keeps creation logic in one place.
+- Separation of Concerns:
+  - Flora is responsible for world-generation logic (where trees/leaves/fruits appear).
+  - Fruit is responsible for collectible behavior (collision, respawn, energy reward).
+- Determinism / reproducible generation:
+  - For each x-column we use Random r = new Random(Objects.hash(x, seed)).
+  - This makes placement deterministic: the same seed creates the same world layout.
+  - This supports infinite generation without “changing the world” when revisiting old areas.
+- Avoiding duplicates (idempotent generation):
+  - generatedTreeXs HashSet ensures the same x column is generated once,
+   preventing duplication when
+    createInRange is called multiple times (important for infinite world).
+
+Leaf behavior:
+- Uses ScheduledTask + Transition to create wind-like motion.
+- This is a composition-based approach: leaves remain simple
+GameObjects while behavior is added via
+  components/transitions (Composition over Inheritance).
+
+Fruit behavior (Fruit.java):
+- Polymorphism:
+  - Fruit extends GameObject and overrides onCollisionEnter for custom behavior.
+- Encapsulation:
+  - Energy reward amount and respawn time are fields/constants inside Fruit.
+- Game loop scheduling:
+  - After collision with avatar:
+    - grant energy
+    - set opaqueness to 0 (hidden)
+    - schedule reappear using ScheduledTask (respawn)
+- Loose coupling:
+  - Fruit checks avatar via tag (Avatar.AVATAR_TAG) rather than hard
+  dependencies on manager logic.
+
+Layers (from manager integration):
+- trunk -> Layer.STATIC_OBJECTS
+- leaf  -> Layer.STATIC_OBJECTS + 1
+- fruit -> Layer.DEFAULT
+
+--------------------------------------------------------------------------------
+Extra features we added (beyond the provided skeleton)
+--------------------------------------------------------------------------------
+Energy UI (pepse.world.avatar.Energy):
+- Added class that displays current energy percentage.
+- Uses callback/Supplier<Float> (Observer-like) to avoid depending on Avatar directly.
+- Runs in CAMERA_COORDINATES so it stays fixed on screen.
+
+Infinite world (pepse.world.infinite):
+- Added package pepse.world.infinite and class InfiniteWorldGenerator.
+- Design:
+  - Acts as a controller/service responsible for extending the world near the avatar.
+  - Uses Terrain.createInRange and Flora.createInRange to generate only missing ranges.
+  - Maintains generatedMinX/generatedMaxX to track current generated bounds.
+  - This matches SRP: PepseGameManager handles setup and delegates world-expansion logic.
+
+--------------------------------------------------------------------------------
+API changes (relative to the provided API tree)
+--------------------------------------------------------------------------------
+We kept the given API structure. Additions we introduced:
+Fruit.java: Added a new GameObject type implementing collectible behavior via
+polymorphism (onCollisionEnter). This keeps Flora focused on generation (SRP)
+while Fruit encapsulates reward/respawn logic and exposes a clean, reusable object.
+Energy.java: Added a UI GameObject created through a factory method create(Supplier<Float>).
+ The UI observes energy through a callback (Observer-like), minimizing
+ coupling to Avatar and keeping responsibilities separated.
+InfiniteWorldGenerator.java: Introduced a dedicated controller/service
+to manage infinite generation ranges.
+It encapsulates the generation algorithm and state
+(generated bounds) and delegates actual creation to Terrain and Flora,
+keeping the manager small and adhering to SRP and OCP.
+
+No other package/class names from the provided tree were changed.
+
+--------------------------------------------------------------------------------
+Notes about design principles used
+--------------------------------------------------------------------------------
+- SRP (Single Responsibility Principle): separate UI (Energy), generation (Flora/Terrain),
+  collectible behavior (Fruit), and infinite expansion (InfiniteWorldGenerator).
+- Encapsulation: each class owns its invariants (energy range, respawn time, generation bounds).
+- Composition over inheritance: behaviors like wind motion and respawn timing are composed via
+  components/transitions/scheduled tasks instead of deep inheritance chains.
+- Factory/Creator pattern: Flora.createInRange centralizes creation of tree-related objects.
+- Callback/Observer style: Energy uses Supplier<Float> to observe avatar energy without
+tight coupling.

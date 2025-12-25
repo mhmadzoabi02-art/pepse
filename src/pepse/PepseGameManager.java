@@ -7,6 +7,7 @@ import danogl.gui.ImageReader;
 import danogl.gui.SoundReader;
 import danogl.gui.UserInputListener;
 import danogl.gui.WindowController;
+import danogl.gui.rendering.Camera;
 import danogl.util.Vector2;
 import pepse.world.Block;
 import pepse.world.Sky;
@@ -18,14 +19,36 @@ import pepse.world.daynight.Sun;
 import pepse.world.daynight.SunHalo;
 import pepse.world.trees.Flora;
 
-public class PepseGameManager extends GameManager {
-    private static final int SEED = 12745;
-    private static final float CYCLE_LENGTH = 30f;
 
+/**
+ * Main game manager for the Pepse project.
+ * Responsible for initializing all world elements (sky, terrain, day-night cycle, avatar, flora)
+ * and maintaining the infinite-world generation during runtime.
+ */
+public class PepseGameManager extends GameManager {
+    /** cycle length */
+    public static final float CYCLE_LENGTH = 30f;
+    private static final int SEED = 12345;
+    private pepse.world.infinite.InfiniteWorldGenerator worldGen;
+    private Avatar avatar;
+
+
+    /**
+     * Program entry point.
+     * @param args command-line arguments (unused).
+     */
     public static void main(String[] args) {
         new PepseGameManager().run();
     }
-
+    /**
+     * Initializes the game world: creates sky, terrain, sun/halo, night overlay, avatar, energy UI,
+     * flora and the infinite-world generator. Also sets the camera to follow the avatar.
+     *
+     * @param imageReader       reader for loading image assets.
+     * @param soundReader       reader for loading sound assets.
+     * @param inputListener     keyboard input listener.
+     * @param windowController  window controller providing window dimensions and window operations.
+     */
     @Override
     public void initializeGame(ImageReader imageReader,
                                SoundReader soundReader,
@@ -61,15 +84,20 @@ public class PepseGameManager extends GameManager {
         float initialY = terrain.groundHeightAt(initialX) - Avatar.AVATAR_DIMENSIONS.y();
         Vector2 initialAvatarLocation = new Vector2(initialX, initialY);
 
-        Avatar avatar = new Avatar(initialAvatarLocation, inputListener, imageReader);
+         this.avatar = new Avatar(initialAvatarLocation, inputListener, imageReader);
+        setCamera(new Camera(avatar,
+                windowDimensions.mult(0.5f).subtract(initialAvatarLocation)
+                ,windowDimensions
+                ,windowDimensions));
         gameObjects().addGameObject(avatar, Layer.DEFAULT);
+
 
         // Energy UI
         GameObject energyDisplay = Energy.create(avatar::getEnergy);
         gameObjects().addGameObject(energyDisplay, Layer.UI);
 
         // Tree
-        Flora flora = new Flora(terrain::groundHeightAt);
+        Flora flora = new Flora(terrain::groundHeightAt,SEED);
         java.util.List<GameObject> trees = flora.createInRange(minX, maxX);
 
         for (GameObject obj : trees) {
@@ -86,5 +114,31 @@ public class PepseGameManager extends GameManager {
                     break;
             }
         }
+        // Infinite world generator initialization
+        int initialMinX = 0;
+        int initialMaxX = (int) windowDimensions.x();
+        int bufferPx = (int) (2 * windowDimensions.x());
+
+        worldGen = new pepse.world.infinite.InfiniteWorldGenerator(
+                gameObjects(),
+                terrain,
+                flora,
+                initialMinX,
+                initialMaxX,
+                bufferPx
+        );
     }
+
+    /**
+     * Per-frame update: delegates to the infinite-world generator to expand the world
+     * around the avatar as it moves.
+     *
+     * @param deltaTime elapsed time since last frame.
+     */
+    @Override
+    public void update(float deltaTime) {
+        super.update(deltaTime);
+        worldGen.update(avatar.getCenter().x()); // store avatar as a field
+    }
+
 }

@@ -5,22 +5,28 @@ import danogl.collisions.Collision;
 import danogl.gui.ImageReader;
 import danogl.gui.UserInputListener;
 import danogl.gui.rendering.AnimationRenderable;
-import danogl.gui.rendering.Renderable;
 import danogl.util.Vector2;
 
 import java.awt.event.KeyEvent;
 
-// Enum defined for Section 6.3
+import static pepse.world.Terrain.GROUND_TAG;
+
+
 enum AvatarState {
     IDLE,
     RUN,
     JUMP
 }
-
+/**
+ * Represents the player-controlled avatar.
+ * The avatar supports horizontal movement, jumping (including a conditional double-jump),
+ * and an energy resource that is consumed by actions and regenerated while idle.
+ */
 public class Avatar extends GameObject {
     private static final float VELOCITY_X = 400;
     private static final float JUMP_VELOCITY_Y = -600;
     private static final float GRAVITY = 600;
+    /** Avatar dimensions in pixels. */
     public static final Vector2 AVATAR_DIMENSIONS = new Vector2(50, 50);
 
     private static final float MAX_ENERGY = 100f;
@@ -30,9 +36,8 @@ public class Avatar extends GameObject {
     private static final float IDLE_ENERGY_GAIN = 1f;
 
     private static final float TIME_BETWEEN_CLIPS = 0.2f;
-
-    private static final String GROUND_TAG = "ground";
-    private static final String AVATAR_TAG = "avatar";
+    /** Tag used to identify the avatar object in collisions. */
+    public static final String AVATAR_TAG = "avatar";
 
     private static final String[] IDLE_PATHS = {
             "assets/idle_0.png", "assets/idle_1.png", "assets/idle_2.png", "assets/idle_3.png"
@@ -53,7 +58,13 @@ public class Avatar extends GameObject {
     private final AnimationRenderable idleAnimation;
     private final AnimationRenderable runAnimation;
     private final AnimationRenderable jumpAnimation;
-
+    /**
+     * Constructs a new avatar.
+     *
+     * @param topLeftCorner initial top-left position of the avatar.
+     * @param inputListener input listener used to read movement/jump keys.
+     * @param imageReader   image reader used to load animation frames.
+     */
     public Avatar(Vector2 topLeftCorner, UserInputListener inputListener,
                   ImageReader imageReader) {
         super(topLeftCorner, AVATAR_DIMENSIONS,
@@ -71,7 +82,11 @@ public class Avatar extends GameObject {
         physics().preventIntersectionsFromDirection(Vector2.ZERO);
         transform().setAccelerationY(GRAVITY);
     }
-
+    /**
+     * Updates avatar movement, jumping, animation state and energy.
+     *
+     * @param deltaTime time (in seconds) since the last frame.
+     */
     @Override
     public void update(float deltaTime) {
         super.update(deltaTime);
@@ -166,17 +181,31 @@ public class Avatar extends GameObject {
         energy = Math.min(energy, MAX_ENERGY);
         energy = Math.max(energy, 0f);
     }
-
+    /**
+     * Returns the current energy value of the avatar.
+     *
+     * @return current energy in range [0, MAX_ENERGY].
+     */
     public float getEnergy() {
         return energy;
     }
-
+    /**
+     * Adds energy to the avatar, clamped by {@link #MAX_ENERGY}.
+     *
+     * @param amount amount of energy to add (can be negative if needed).
+     */
     public void addEnergy(float amount) {
         this.energy += amount;
         // Assert energy is in range
         this.energy = Math.min(this.energy, MAX_ENERGY);
     }
-
+    /**
+     * Called when a collision begins. If colliding with ground, ensures the avatar does not
+     * continue sinking downward by zeroing the vertical velocity.
+     *
+     * @param other     the other object involved in the collision.
+     * @param collision collision information provided by the engine.
+     */
     @Override
     public void onCollisionEnter(GameObject other, Collision collision) {
         super.onCollisionEnter(other, collision);

@@ -13,50 +13,73 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Function;
-
+/**
+ * Procedurally generates trees (trunks, leaves and fruits) in a given x-range.
+ * Generation is deterministic per x-coordinate using a fixed seed, and repeated calls
+ * with overlapping ranges will not duplicate trees.
+ */
 public class Flora {
     private static final Color TRUNK_COLOR = new Color(100, 50, 20);
     private static final Color LEAF_COLOR = new Color(50, 200, 30);
 
-    private static final String TRUNK_TAG = "trunk";
-    private static final String LEAF_TAG = "leaf";
+    public static final String TRUNK_TAG = "trunk";
+    public static final String LEAF_TAG = "leaf";
+
 
     private static final int MIN_TREE_HEIGHT = 4;
     private static final int MAX_TREE_HEIGHT = 12;
 
     private static final int TREE_RADIUS = 2;
-    private static final float LEAF_APPEARENCE_PROBABILITY = 0.3f;
-    private static final float FRUIT_APPEARENCE_PROBABILITY = 0.1f;
+    private static final float TREE_APPEARANCE_PROBABILITY = 0.1f;
+    private static final float LEAF_APPEARANCE_PROBABILITY = 0.3f;
+    private static final float FRUIT_APPEARANCE_PROBABILITY = 0.1f;
 
 
     private static final float FOLIAGE_TRANSITION_TIME = 2f;
     private static final float MAX_WIND_ANGLE = 10f;
     private static final float MAX_WIND_WIDTH_CHANGE = 2f;
+    private static final float FRUIT_RESPAWN_TIME = 30f;
 
     private final Function<Float, Float> groundHeightFunc;
-    private final Random random = new Random();
+    private final int seed;
+    private final java.util.HashSet<Integer> generatedTreeXs = new java.util.HashSet<>();
 
-    public Flora(Function<Float, Float> groundHeightFunc) {
+    /**
+     * Constructs a flora generator.
+     *
+     * @param groundHeightFunc function providing the ground height at a given x.
+     * @param seed             fixed seed for deterministic generation.
+     */
+    public Flora(Function<Float, Float> groundHeightFunc, int seed) {
         this.groundHeightFunc = groundHeightFunc;
+        this.seed = seed;
     }
-
+    /**
+     * Creates flora objects in the given x-range.
+     * The returned list includes trunks, leaves and fruits (as {@link GameObject}s).
+     *
+     * @param minX left boundary (inclusive) in world coordinates.
+     * @param maxX right boundary (inclusive) in world coordinates.
+     * @return list of generated flora objects in the requested range.
+     */
     public List<GameObject> createInRange(int minX, int maxX) {
         List<GameObject> treeParts = new ArrayList<>();
         int startX = (minX / Block.SIZE) * Block.SIZE;
         int endX = (maxX / Block.SIZE) * Block.SIZE;
 
         for (int x = startX; x <= endX; x += Block.SIZE) {
-            if (random.nextFloat() < 0.1) {
-                createTree(treeParts, x);
-            }
+            if (generatedTreeXs.contains(x)) continue;
+            generatedTreeXs.add(x);
+            Random r = new Random(java.util.Objects.hash(x, seed));
+            if (r.nextFloat() < TREE_APPEARANCE_PROBABILITY) createTree(treeParts, x, r);
         }
         return treeParts;
     }
 
-    private void createTree(List<GameObject> treeParts, int x) {
+    private void createTree(List<GameObject> treeParts, int x, Random r) {
         float groundHeight = groundHeightFunc.apply((float) x);
         int groundY = (int) (Math.floor(groundHeight / Block.SIZE) * Block.SIZE);
-        int treeHeight = random.nextInt(MAX_TREE_HEIGHT - MIN_TREE_HEIGHT) + MIN_TREE_HEIGHT;
+        int treeHeight = r.nextInt(MAX_TREE_HEIGHT - MIN_TREE_HEIGHT) + MIN_TREE_HEIGHT;
         int trunkTopY = groundY - (treeHeight * Block.SIZE);
 
         for (int i = 0; i < treeHeight; i++) {
@@ -75,7 +98,7 @@ public class Flora {
                 int leafX = x + (i * Block.SIZE);
                 int leafY = trunkTopY + (j * Block.SIZE);
 
-                if (random.nextFloat() > LEAF_APPEARENCE_PROBABILITY) {
+                if (r.nextFloat() > LEAF_APPEARANCE_PROBABILITY) {
                     GameObject leaf = new Block(
                             new Vector2(leafX, leafY),
                             new RectangleRenderable(ColorSupplier.approximateColor(LEAF_COLOR))
@@ -84,15 +107,16 @@ public class Flora {
                     leaf.setTag(LEAF_TAG);
                     leaf.physics().setMass(0);
                     leaf.physics().preventIntersectionsFromDirection(null);
-                    animateLeaf(leaf);
+                    animateLeaf(leaf,r);
 
                     treeParts.add(leaf);
                 }
 
-                if (random.nextFloat() < FRUIT_APPEARENCE_PROBABILITY) {
+                if (r.nextFloat() < FRUIT_APPEARANCE_PROBABILITY) {
                     GameObject fruit = new Fruit(
                             new Vector2(leafX, leafY),
-                            new Vector2(Block.SIZE, Block.SIZE)
+                            new Vector2(Block.SIZE, Block.SIZE),
+                            FRUIT_RESPAWN_TIME
                     );
 
                     fruit.physics().setMass(0);
@@ -104,8 +128,8 @@ public class Flora {
         }
     }
 
-    private void animateLeaf(GameObject leaf) {
-        float waitTime = random.nextFloat() * 5;
+    private void animateLeaf(GameObject leaf,Random r) {
+        float waitTime = r.nextFloat() * 5;
 
         new ScheduledTask(
                 leaf,
