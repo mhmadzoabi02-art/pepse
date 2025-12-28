@@ -61,6 +61,14 @@ public class PepseGameManager extends GameManager {
         GameObject sky= Sky.create(windowDimensions);
         gameObjects().addGameObject(sky, Layer.BACKGROUND);
 
+
+
+        // Sun + halo
+        GameObject sun= Sun.create(windowDimensions,CYCLE_LENGTH);
+        GameObject halo= SunHalo.create(sun);
+        gameObjects().addGameObject(halo, Layer.BACKGROUND+2);
+        gameObjects().addGameObject(sun, Layer.BACKGROUND+1);
+
         //terrain
         Terrain terrain = new Terrain(windowDimensions, SEED);
         int minX=0;
@@ -69,19 +77,25 @@ public class PepseGameManager extends GameManager {
             gameObjects().addGameObject(b, Layer.STATIC_OBJECTS);
         }
 
-        // Sun + halo
-        GameObject sun= Sun.create(windowDimensions,CYCLE_LENGTH);
-        GameObject halo= SunHalo.create(sun);
-        gameObjects().addGameObject(halo, Layer.DEFAULT-1);
-        gameObjects().addGameObject(sun, Layer.DEFAULT);
-
         // Night overlay on top of everything
         GameObject night = Night.create(windowDimensions, CYCLE_LENGTH);
         gameObjects().addGameObject(night, Layer.FOREGROUND);
 
         // Avatar
-        float initialX = windowDimensions.x() / 2;
-        float initialY = terrain.groundHeightAt(initialX) - Avatar.AVATAR_DIMENSIONS.y();
+        float initialX = (float)(Math.floor((windowDimensions.x()/2f) / Block.SIZE) * Block.SIZE);
+
+
+        float halfW = Avatar.AVATAR_DIMENSIONS.x() / 2f;
+        float leftX  = initialX - halfW;
+        float rightX = initialX + halfW;
+
+        float leftTopY  = snapDown(terrain.groundHeightAt(leftX), Block.SIZE);
+        float midTopY   = snapDown(terrain.groundHeightAt(initialX), Block.SIZE);
+        float rightTopY = snapDown(terrain.groundHeightAt(rightX), Block.SIZE);
+
+        float groundTopY = Math.min(leftTopY, Math.min(midTopY, rightTopY));
+
+        float initialY = groundTopY - Avatar.AVATAR_DIMENSIONS.y();
         Vector2 initialAvatarLocation = new Vector2(initialX, initialY);
 
          this.avatar = new Avatar(initialAvatarLocation, inputListener, imageReader);
@@ -140,5 +154,7 @@ public class PepseGameManager extends GameManager {
         super.update(deltaTime);
         worldGen.update(avatar.getCenter().x()); // store avatar as a field
     }
-
+    private static float snapDown(float v, float size) {
+        return (float) (Math.floor(v / size) * size);
+    }
 }
