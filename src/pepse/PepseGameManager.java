@@ -29,6 +29,7 @@ public class PepseGameManager extends GameManager {
     /** cycle length */
     public static final float CYCLE_LENGTH = 30f;
     private static final int SEED = 12345;
+
     private pepse.world.infinite.InfiniteWorldGenerator worldGen;
     private Avatar avatar;
 
@@ -141,6 +142,10 @@ public class PepseGameManager extends GameManager {
                 initialMaxX,
                 bufferPx
         );
+        final int TERRAIN_LAYER = Layer.STATIC_OBJECTS;
+        final int SKY_LAYER     = TERRAIN_LAYER - 3;
+        final int SUN_LAYER     = TERRAIN_LAYER - 2;
+        final int HALO_LAYER    = TERRAIN_LAYER - 1;
     }
 
     /**
@@ -152,7 +157,7 @@ public class PepseGameManager extends GameManager {
     @Override
     public void update(float deltaTime) {
         super.update(deltaTime);
-        worldGen.update(avatar.getCenter().x()); // store avatar as a field
+        worldGen.update(avatar.getCenter().x());
     }
     private static float snapDown(float v, float size) {
         return (float) (Math.floor(v / size) * size);

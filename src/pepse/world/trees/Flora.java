@@ -64,8 +64,9 @@ public class Flora {
      */
     public List<GameObject> createInRange(int minX, int maxX) {
         List<GameObject> treeParts = new ArrayList<>();
-        int startX = (minX / Block.SIZE) * Block.SIZE;
-        int endX = (maxX / Block.SIZE) * Block.SIZE;
+        int startX = Math.floorDiv(minX, Block.SIZE) * Block.SIZE;
+        int endX   = Math.floorDiv(maxX, Block.SIZE) * Block.SIZE;
+
 
         for (int x = startX; x <= endX; x += Block.SIZE) {
             if (generatedTreeXs.contains(x)) continue;
@@ -79,7 +80,8 @@ public class Flora {
     private void createTree(List<GameObject> treeParts, int x, Random r) {
         float groundHeight = groundHeightFunc.apply((float) x);
         int groundY = (int) (Math.floor(groundHeight / Block.SIZE) * Block.SIZE);
-        int treeHeight = r.nextInt(MAX_TREE_HEIGHT - MIN_TREE_HEIGHT) + MIN_TREE_HEIGHT;
+        int treeHeight = r.nextInt(MAX_TREE_HEIGHT - MIN_TREE_HEIGHT + 1) + MIN_TREE_HEIGHT;
+
         int trunkTopY = groundY - (treeHeight * Block.SIZE);
 
         for (int i = 0; i < treeHeight; i++) {
@@ -92,6 +94,7 @@ public class Flora {
             treeParts.add(trunkBlock);
         }
 
+
         int radius = TREE_RADIUS;
         for (int i = -radius; i <= radius; i++) {
             for (int j = -radius; j <= radius; j++) {
@@ -99,30 +102,31 @@ public class Flora {
                 int leafY = trunkTopY + (j * Block.SIZE);
 
                 if (r.nextFloat() > LEAF_APPEARANCE_PROBABILITY) {
-                    GameObject leaf = new Block(
+                    GameObject leaf = new GameObject(
                             new Vector2(leafX, leafY),
+                            Vector2.ONES.mult(Block.SIZE),
                             new RectangleRenderable(ColorSupplier.approximateColor(LEAF_COLOR))
                     );
-
                     leaf.setTag(LEAF_TAG);
-                    leaf.physics().setMass(0);
+
+// leaves should not block movement
                     leaf.physics().preventIntersectionsFromDirection(null);
-                    animateLeaf(leaf,r);
-
+                    leaf.physics().setMass(0);
+                    animateLeaf(leaf, r);
                     treeParts.add(leaf);
-                }
 
-                if (r.nextFloat() < FRUIT_APPEARANCE_PROBABILITY) {
-                    GameObject fruit = new Fruit(
-                            new Vector2(leafX, leafY),
-                            new Vector2(Block.SIZE, Block.SIZE),
-                            FRUIT_RESPAWN_TIME
-                    );
 
-                    fruit.physics().setMass(0);
-                    fruit.physics().preventIntersectionsFromDirection(null);
+                    if (r.nextFloat() < FRUIT_APPEARANCE_PROBABILITY) {
+                        GameObject fruit = new Fruit(
+                                new Vector2(leafX, leafY),
+                                new Vector2(Block.SIZE, Block.SIZE),
+                                FRUIT_RESPAWN_TIME
+                        );
+                        fruit.setTag("fruit");
 
-                    treeParts.add(fruit);
+                        fruit.physics().setMass(0);
+                        treeParts.add(fruit);
+                    }
                 }
             }
         }
@@ -174,4 +178,15 @@ public class Flora {
                 null
         );
     }
+    /**
+     * Allows regenerating a tree column that was previously generated.
+     *
+     * @param x column x coordinate (will be snapped to the block grid).
+     */
+    public void forgetTreeX(int x) {
+        int snappedX = Math.floorDiv(x, Block.SIZE) * Block.SIZE;
+        generatedTreeXs.remove(snappedX);
+    }
+
+
 }

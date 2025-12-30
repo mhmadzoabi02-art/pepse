@@ -78,4 +78,8 @@ public class Terrain {
         }
         return blocks;
     }
+    public void forgetColumn(int x) {
+        int snappedX = Math.floorDiv(x, Block.SIZE) * Block.SIZE;
+        generatedColumns.remove(snappedX);
+    }
 }
