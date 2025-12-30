@@ -35,6 +35,16 @@ public class Avatar extends GameObject {
     private static final float JUMP_ENERGY_COST = 20f;
     private static final float DOUBLE_JUMP_ENERGY_COST = 50f;
     private static final float IDLE_ENERGY_GAIN = 1f;
+    private static final float STAND_NORMAL_Y = -0.9f;   // must be strongly upward
+    private static final float STAND_MAX_ABS_X = 0.2f;
+    private static final float WALL_NORMAL_X = 0.8f;   // strong side push
+    private static final float WALL_MAX_ABS_Y = 0.2f;
+    // tune these if needed
+    private static final float STAND_NY = -0.7f;     // must be strongly "from above"
+    private static final float STAND_MAX_NX = 0.25f; // almost no sideways normal
+
+    private static final float WALL_NX = 0.7f;       // strongly from side
+    private static final float WALL_MAX_NY = 0.25f;
 
 
 
@@ -69,11 +79,15 @@ public class Avatar extends GameObject {
     private boolean grounded = false;
     private static final float LANDING_EPS = 1f;
     private static final float GROUND_NORMAL_THRESHOLD = -0.5f; // collision from above
-    private static final float VX_EPS = 0.1f;                   // ignore tiny drift
     private static final String TRUNK_TAG = "trunk";
     private boolean touchingWallLeft = false;
     private boolean touchingWallRight = false;
-    private static final float WALL_NORMAL_X = 0.5f;
+    private static final float VX_EPS = 0.5f; // treat tiny vx as 0
+
+    private boolean spaceWasDown = false;
+    private boolean doubleJumpUsed = false;
+
+
 
 
     /**
@@ -109,67 +123,78 @@ public class Avatar extends GameObject {
     public void update(float deltaTime) {
         super.update(deltaTime);
 
-        // Use grounded info from previous collision step + small vy tolerance
+        // Grounded from LAST physics step (set in onCollisionStay/Enter)
         boolean onGroundNow = grounded || Math.abs(getVelocity().y()) < GROUND_EPS_VY;
+
+        // Reset double jump when actually on ground
+        if (onGroundNow) {
+            doubleJumpUsed = false;
+        }
 
         AvatarState prevState = state;
 
-        float xVel = 0;
+        boolean leftDown  = inputListener.isKeyPressed(KeyEvent.VK_LEFT);
+        boolean rightDown = inputListener.isKeyPressed(KeyEvent.VK_RIGHT);
 
-        // Use wall info from previous collision step
+        float xVel = 0f;
+
+        // wall info from last collision step
         boolean blockLeft  = touchingWallLeft;
         boolean blockRight = touchingWallRight;
 
-        // Horizontal movement (blocked if pushing into a trunk wall)
-        if (inputListener.isKeyPressed(KeyEvent.VK_LEFT)) {
-            if (!blockLeft && (!onGroundNow || energy >= RUN_ENERGY_COST)) {
-                xVel -= VELOCITY_X;
+        if (leftDown ^ rightDown) { // exactly one is pressed
+            if (leftDown && !blockLeft && (!onGroundNow || energy >= RUN_ENERGY_COST)) {
+                xVel = -VELOCITY_X;
                 renderer().setIsFlippedHorizontally(true);
-            }
-        }
-
-        if (inputListener.isKeyPressed(KeyEvent.VK_RIGHT)) {
-            if (!blockRight && (!onGroundNow || energy >= RUN_ENERGY_COST)) {
-                xVel += VELOCITY_X;
+            } else if (rightDown && !blockRight && (!onGroundNow || energy >= RUN_ENERGY_COST)) {
+                xVel = VELOCITY_X;
                 renderer().setIsFlippedHorizontally(false);
             }
         }
-
-        if (inputListener.isKeyPressed(KeyEvent.VK_LEFT) &&
-                inputListener.isKeyPressed(KeyEvent.VK_RIGHT)) {
-            xVel = 0;
-        }
+        // else: none or both -> stay 0
 
         transform().setVelocityX(xVel);
 
-        // Jump + double jump (your original rule)
-        if (inputListener.isKeyPressed(KeyEvent.VK_SPACE)) {
+        // Jump "just pressed"
+        boolean spaceDown = inputListener.isKeyPressed(KeyEvent.VK_SPACE);
+        boolean spaceJustPressed = spaceDown && !spaceWasDown;
+        spaceWasDown = spaceDown;
+
+        if (spaceJustPressed) {
             if (onGroundNow) {
                 if (energy >= JUMP_ENERGY_COST) {
                     transform().setVelocityY(JUMP_VELOCITY_Y);
                     energy -= JUMP_ENERGY_COST;
                 }
-            } else {
-                if (getVelocity().y() > 0 && energy >= DOUBLE_JUMP_ENERGY_COST) {
-                    transform().setVelocityY(JUMP_VELOCITY_Y);
-                    energy -= DOUBLE_JUMP_ENERGY_COST;
-                }
+            } else if (!doubleJumpUsed && getVelocity().y() > 0 && energy >= DOUBLE_JUMP_ENERGY_COST) {
+                transform().setVelocityY(JUMP_VELOCITY_Y);
+                energy -= DOUBLE_JUMP_ENERGY_COST;
+                doubleJumpUsed = true;
             }
         }
 
-        // State
+        // State depends on INPUT xVel (prevents "running in place")
         if (!onGroundNow) state = AvatarState.JUMP;
-        else if (getVelocity().x() != 0) state = AvatarState.RUN;
+        else if (xVel != 0f) state = AvatarState.RUN;
         else state = AvatarState.IDLE;
 
         if (state != prevState) updateAnimation();
-        updateEnergy();
 
-        // IMPORTANT: clear at end (collisions will set them after update)
+        // Energy depends on INPUT xVel too
+        if (onGroundNow && xVel == 0f) {
+            energy = Math.min(MAX_ENERGY, energy + IDLE_ENERGY_GAIN);
+        } else if (onGroundNow && xVel != 0f) {
+            energy = Math.max(0f, energy - RUN_ENERGY_COST);
+        }
+
+        // Clear flags for next physics step (collisions will set them)
         grounded = false;
         touchingWallLeft = false;
         touchingWallRight = false;
     }
+
+
+
 
 
 
@@ -252,25 +277,32 @@ public class Avatar extends GameObject {
         boolean solidSurface = GROUND_TAG.equals(tag) || Flora.TRUNK_TAG.equals(tag);
         if (!solidSurface) return;
 
-        // landing on top
-        if (collision.getNormal().y() < 0 && getVelocity().y() >= 0) {
-            transform().setVelocityY(0);
+        float ny = collision.getNormal().y();
+        float nx = collision.getNormal().x();
+
+        // Standing only if mostly vertical AND we are not moving up
+        if (ny < STAND_NY && Math.abs(nx) < STAND_MAX_NX && getVelocity().y() >= 0) {
             grounded = true;
+            if (getVelocity().y() > 0) {
+                transform().setVelocityY(0);
+            }
         }
     }
 
+
+
+
     private void handleWallCollision(GameObject other, Collision collision) {
-        if (!Flora.TRUNK_TAG.equals(other.getTag())) return; // only trunks are walls
+        if (!Flora.TRUNK_TAG.equals(other.getTag())) return;
 
         float nx = collision.getNormal().x();
-        if (nx > WALL_NORMAL_X)  touchingWallLeft = true;   // trunk is on left
-        if (nx < -WALL_NORMAL_X) touchingWallRight = true;  // trunk is on right
+        float ny = collision.getNormal().y();
+
+        if (Math.abs(nx) > WALL_NX && Math.abs(ny) < WALL_MAX_NY) {
+            if (nx > 0) touchingWallLeft = true;
+            else        touchingWallRight = true;
+        }
     }
 
-
-    private boolean isStandingSurface(GameObject other) {
-        String tag = other.getTag();
-        return GROUND_TAG.equals(tag) || Flora.TRUNK_TAG.equals(tag);
-    }
 
 }
