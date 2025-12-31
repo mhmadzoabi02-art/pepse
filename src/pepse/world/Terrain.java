@@ -10,6 +10,9 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+
+import static pepse.PepseGameManager.GROUND_TAG;
+
 /**
  * Responsible for generating and managing the ground terrain.
  * Terrain height is computed using Perlin-like noise (via {@link NoiseGenerator}) around a baseline
@@ -18,8 +21,8 @@ import java.util.List;
 public class Terrain {
     private static final int TERRAIN_DEPTH = 20;
     private static final Color BASE_GROUND_COLOR = new Color(212, 123, 74);
+    private static final float TWO_THIRDS = (float) 2 /3 ;
     /** Tag used to identify ground blocks. */
-    public static final String GROUND_TAG = "ground";
     private final float groundHeightAtX0;
     private final HashSet<Integer> generatedColumns= new HashSet<>();
     private final NoiseGenerator noiseGenerator;
@@ -30,7 +33,7 @@ public class Terrain {
      * @param seed             fixed seed for deterministic terrain generation.
      */
     public Terrain(Vector2 windowDimensions, int seed){
-        this.groundHeightAtX0=windowDimensions.y()*((float) 2 /3);
+        this.groundHeightAtX0=windowDimensions.y()*(TWO_THIRDS);
         this.noiseGenerator = new NoiseGenerator(seed,(int)groundHeightAtX0);
     }
     /**
@@ -78,6 +81,17 @@ public class Terrain {
         }
         return blocks;
     }
+    /**
+     * Forgets a previously generated terrain column so it can be regenerated later.
+     * <p>
+     * The given {@code x} is snapped down to the terrain grid (multiples of {@link Block#SIZE})
+     * because terrain generation is column-based and aligned to block coordinates.
+     * This method is typically used by the infinite-world mechanism when pruning far-away columns:
+     * removing the column from {@code generatedColumns} re-enables {@link #createInRange(int, int)}
+     * to recreate it if the avatar returns to that area.
+     *
+     * @param x an x-coordinate in world space; will be snapped to the block grid.
+     */
     public void forgetColumn(int x) {
         int snappedX = Math.floorDiv(x, Block.SIZE) * Block.SIZE;
         generatedColumns.remove(snappedX);

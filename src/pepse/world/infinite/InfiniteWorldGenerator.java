@@ -13,9 +13,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import static pepse.PepseGameManager.*;
 
-import static pepse.world.trees.Flora.LEAF_TAG;
-import static pepse.world.trees.Flora.TRUNK_TAG;
 
 /**
  * Handles infinite-world generation by expanding terrain and flora around the avatar
@@ -26,7 +25,6 @@ public class InfiniteWorldGenerator {
     private final Map<Integer, List<Spawned>> spawnedByColumnX = new HashMap<>();
 
     /** Tag for fruit objects. */
-    private static final String FRUIT_TAG = "fruit";
     private final GameObjectCollection gameObjects;
     private final Terrain terrain;
     private final Flora flora;
@@ -107,18 +105,6 @@ public class InfiniteWorldGenerator {
         if (LEAF_TAG.equals(tag))  return Layer.STATIC_OBJECTS + 1;
         if (FRUIT_TAG.equals(tag)) return Layer.DEFAULT;
         return Layer.DEFAULT;
-    }
-    private void addFloraObject(GameObject obj) {
-        String tag = obj.getTag();
-        if (TRUNK_TAG.equals(tag)) {
-            gameObjects.addGameObject(obj, Layer.STATIC_OBJECTS);
-        } else if (LEAF_TAG.equals(tag)) {
-            gameObjects.addGameObject(obj, Layer.STATIC_OBJECTS + 1);
-        } else if (FRUIT_TAG.equals(tag)) {
-            gameObjects.addGameObject(obj, Layer.DEFAULT);
-        } else {
-            gameObjects.addGameObject(obj, Layer.DEFAULT);
-        }
     }
     private void pruneOutside(int targetMin, int targetMax) {
         Iterator<Map.Entry<Integer, List<Spawned>>> it = spawnedByColumnX.entrySet().iterator();

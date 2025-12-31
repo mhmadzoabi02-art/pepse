@@ -26,13 +26,18 @@ import pepse.world.trees.Flora;
  * and maintaining the infinite-world generation during runtime.
  */
 public class PepseGameManager extends GameManager {
+    public static final  String FRUIT_TAG = "fruit";
+    /** Tag used to identify the avatar object in collisions. */
+    public static final String AVATAR_TAG = "avatar";
+    public static final String TRUNK_TAG = "trunk";
+    public static final String LEAF_TAG = "leaf";
+    public static final String GROUND_TAG = "ground";
     /** cycle length */
     public static final float CYCLE_LENGTH = 30f;
     private static final int SEED = 12345;
-
+    private static final float HALF =0.5f ;
     private pepse.world.infinite.InfiniteWorldGenerator worldGen;
     private Avatar avatar;
-
 
     /**
      * Program entry point.
@@ -101,7 +106,7 @@ public class PepseGameManager extends GameManager {
 
          this.avatar = new Avatar(initialAvatarLocation, inputListener, imageReader);
         setCamera(new Camera(avatar,
-                windowDimensions.mult(0.5f).subtract(initialAvatarLocation)
+                windowDimensions.mult(HALF).subtract(initialAvatarLocation)
                 ,windowDimensions
                 ,windowDimensions));
         gameObjects().addGameObject(avatar, Layer.DEFAULT);
@@ -118,13 +123,13 @@ public class PepseGameManager extends GameManager {
         for (GameObject obj : trees) {
             String tag = obj.getTag();
             switch (tag) {
-                case "trunk":
+                case TRUNK_TAG:
                     gameObjects().addGameObject(obj, Layer.STATIC_OBJECTS);
                     break;
-                case "leaf":
+                case LEAF_TAG:
                     gameObjects().addGameObject(obj, Layer.STATIC_OBJECTS + 1);
                     break;
-                case "fruit":
+                case FRUIT_TAG:
                     gameObjects().addGameObject(obj, Layer.DEFAULT);
                     break;
             }
@@ -142,10 +147,7 @@ public class PepseGameManager extends GameManager {
                 initialMaxX,
                 bufferPx
         );
-        final int TERRAIN_LAYER = Layer.STATIC_OBJECTS;
-        final int SKY_LAYER     = TERRAIN_LAYER - 3;
-        final int SUN_LAYER     = TERRAIN_LAYER - 2;
-        final int HALO_LAYER    = TERRAIN_LAYER - 1;
+
     }
 
     /**

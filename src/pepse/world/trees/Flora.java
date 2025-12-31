@@ -13,6 +13,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Function;
+
+import static pepse.PepseGameManager.*;
+
 /**
  * Procedurally generates trees (trunks, leaves and fruits) in a given x-range.
  * Generation is deterministic per x-coordinate using a fixed seed, and repeated calls
@@ -22,8 +25,6 @@ public class Flora {
     private static final Color TRUNK_COLOR = new Color(100, 50, 20);
     private static final Color LEAF_COLOR = new Color(50, 200, 30);
 
-    public static final String TRUNK_TAG = "trunk";
-    public static final String LEAF_TAG = "leaf";
 
 
     private static final int MIN_TREE_HEIGHT = 4;
@@ -39,6 +40,7 @@ public class Flora {
     private static final float MAX_WIND_ANGLE = 10f;
     private static final float MAX_WIND_WIDTH_CHANGE = 2f;
     private static final float FRUIT_RESPAWN_TIME = 30f;
+    private static final float FIVE = 5 ;
 
     private final Function<Float, Float> groundHeightFunc;
     private final int seed;
@@ -109,7 +111,6 @@ public class Flora {
                     );
                     leaf.setTag(LEAF_TAG);
 
-// leaves should not block movement
                     leaf.physics().preventIntersectionsFromDirection(null);
                     leaf.physics().setMass(0);
                     animateLeaf(leaf, r);
@@ -122,7 +123,7 @@ public class Flora {
                                 new Vector2(Block.SIZE, Block.SIZE),
                                 FRUIT_RESPAWN_TIME
                         );
-                        fruit.setTag("fruit");
+                        fruit.setTag(FRUIT_TAG);
 
                         fruit.physics().setMass(0);
                         treeParts.add(fruit);
@@ -133,7 +134,7 @@ public class Flora {
     }
 
     private void animateLeaf(GameObject leaf,Random r) {
-        float waitTime = r.nextFloat() * 5;
+        float waitTime = r.nextFloat() * FIVE;
 
         new ScheduledTask(
                 leaf,

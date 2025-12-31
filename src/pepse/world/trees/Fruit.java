@@ -5,9 +5,12 @@ import danogl.collisions.Collision;
 import danogl.components.ScheduledTask;
 import danogl.gui.rendering.OvalRenderable;
 import danogl.util.Vector2;
+import pepse.PepseGameManager;
 import pepse.world.avatar.Avatar;
 
 import java.awt.Color;
+
+import static pepse.PepseGameManager.FRUIT_TAG;
 
 
 /**
@@ -15,9 +18,10 @@ import java.awt.Color;
  * energy once, becomes invisible, and reappears after one day-night cycle.
  */
 public class Fruit extends GameObject {
-    private static final String FRUIT_TAG = "fruit";
     private static final Color FRUIT_COLOR = Color.RED;
     private static final float ENERGY_GAIN = 10f;
+    private static final float ZERO = 0f;
+    private static final float ONE = 1f;
     private final float respawnTimeSeconds;
 
     /**
@@ -43,15 +47,15 @@ public class Fruit extends GameObject {
     public void onCollisionEnter(GameObject other, Collision collision) {
         super.onCollisionEnter(other, collision);
 
-        if (Avatar.AVATAR_TAG.equals(other.getTag()) && renderer().getOpaqueness() == 1f) {
+        if (PepseGameManager.AVATAR_TAG.equals(other.getTag()) && renderer().getOpaqueness() == ONE) {
             ((Avatar) other).addEnergy(ENERGY_GAIN);
-            renderer().setOpaqueness(0f);
+            renderer().setOpaqueness(ZERO);
 
             new ScheduledTask(
                     this,
                     respawnTimeSeconds,
                     false,
-                    () -> renderer().setOpaqueness(1f)
+                    () -> renderer().setOpaqueness(ONE)
             );
         }
     }

@@ -6,11 +6,11 @@ import danogl.gui.ImageReader;
 import danogl.gui.UserInputListener;
 import danogl.gui.rendering.AnimationRenderable;
 import danogl.util.Vector2;
-import pepse.world.trees.Flora;
+
 
 import java.awt.event.KeyEvent;
 
-import static pepse.world.Terrain.GROUND_TAG;
+import static pepse.PepseGameManager.*;
 
 
 enum AvatarState {
@@ -35,23 +35,14 @@ public class Avatar extends GameObject {
     private static final float JUMP_ENERGY_COST = 20f;
     private static final float DOUBLE_JUMP_ENERGY_COST = 50f;
     private static final float IDLE_ENERGY_GAIN = 1f;
-    private static final float STAND_NORMAL_Y = -0.9f;   // must be strongly upward
-    private static final float STAND_MAX_ABS_X = 0.2f;
-    private static final float WALL_NORMAL_X = 0.8f;   // strong side push
-    private static final float WALL_MAX_ABS_Y = 0.2f;
-    // tune these if needed
     private static final float STAND_NY = -0.7f;     // must be strongly "from above"
     private static final float STAND_MAX_NX = 0.25f; // almost no sideways normal
 
     private static final float WALL_NX = 0.7f;       // strongly from side
     private static final float WALL_MAX_NY = 0.25f;
 
-
-
-
     private static final float TIME_BETWEEN_CLIPS = 0.2f;
     /** Tag used to identify the avatar object in collisions. */
-    public static final String AVATAR_TAG = "avatar";
 
     private static final String[] IDLE_PATHS = {
             "assets/idle_0.png", "assets/idle_1.png", "assets/idle_2.png", "assets/idle_3.png"
@@ -72,17 +63,11 @@ public class Avatar extends GameObject {
     private final AnimationRenderable idleAnimation;
     private final AnimationRenderable runAnimation;
     private final AnimationRenderable jumpAnimation;
-    private boolean isOnGround = false;
-    private float prevBottomY = 0f;
-    private boolean onGround = false;
     private static final float GROUND_EPS_VY = 0.5f; // tolerance for "standing"
     private boolean grounded = false;
-    private static final float LANDING_EPS = 1f;
-    private static final float GROUND_NORMAL_THRESHOLD = -0.5f; // collision from above
-    private static final String TRUNK_TAG = "trunk";
+
     private boolean touchingWallLeft = false;
     private boolean touchingWallRight = false;
-    private static final float VX_EPS = 0.5f; // treat tiny vx as 0
 
     private boolean spaceWasDown = false;
     private boolean doubleJumpUsed = false;
@@ -183,7 +168,7 @@ public class Avatar extends GameObject {
         // Energy depends on INPUT xVel too
         if (onGroundNow && xVel == 0f) {
             energy = Math.min(MAX_ENERGY, energy + IDLE_ENERGY_GAIN);
-        } else if (onGroundNow && xVel != 0f) {
+        } else if (onGroundNow) {
             energy = Math.max(0f, energy - RUN_ENERGY_COST);
         }
 
@@ -212,26 +197,6 @@ public class Avatar extends GameObject {
         }
     }
 
-    private void updateEnergy() {
-        switch (state) {
-            case IDLE:
-                if (energy < MAX_ENERGY) {
-                    energy += IDLE_ENERGY_GAIN;
-                }
-                break;
-            case RUN:
-                if (energy > 0) {
-                    energy -= RUN_ENERGY_COST;
-                }
-                break;
-            case JUMP:
-                break;
-        }
-
-        // Asserting energy is in range
-        energy = Math.min(energy, MAX_ENERGY);
-        energy = Math.max(energy, 0f);
-    }
     /**
      * Returns the current energy value of the avatar.
      *
@@ -263,7 +228,22 @@ public class Avatar extends GameObject {
         handleStandCollision(other, collision);
         handleWallCollision(other, collision);
     }
-
+    /**
+     * Called by the engine every frame while this avatar remains in contact with another {@link GameObject}.
+     * <p>
+     * This method delegates collision classification to dedicated handlers:
+     * <ul>
+     *   <li>{@code handleStandCollision} detects "standing" contacts (landing on top of solid surfaces such as
+     *       ground or a trunk) and updates grounded state / cancels downward velocity as needed.</li>
+     *   <li>{@code handleWallCollision} detects "wall" contacts (side collisions with trunks) and updates wall flags
+     *       used to block horizontal movement into the trunk.</li>
+     * </ul>
+     * Keeping the collision logic inside {@code Avatar} preserves encapsulation: external classes do not need to
+     * know how collision normals are interpreted to determine standing vs. wall contact.
+     *
+     * @param other     the other object currently colliding with the avatar.
+     * @param collision collision information provided by the engine (e.g., collision normal).
+     */
     @Override
     public void onCollisionStay(GameObject other, Collision collision) {
         super.onCollisionStay(other, collision);
@@ -274,7 +254,7 @@ public class Avatar extends GameObject {
 
     private void handleStandCollision(GameObject other, Collision collision) {
         String tag = other.getTag();
-        boolean solidSurface = GROUND_TAG.equals(tag) || Flora.TRUNK_TAG.equals(tag);
+        boolean solidSurface = GROUND_TAG.equals(tag) || TRUNK_TAG.equals(tag);
         if (!solidSurface) return;
 
         float ny = collision.getNormal().y();
@@ -293,7 +273,7 @@ public class Avatar extends GameObject {
 
 
     private void handleWallCollision(GameObject other, Collision collision) {
-        if (!Flora.TRUNK_TAG.equals(other.getTag())) return;
+        if (TRUNK_TAG.equals(other.getTag())) return;
 
         float nx = collision.getNormal().x();
         float ny = collision.getNormal().y();
