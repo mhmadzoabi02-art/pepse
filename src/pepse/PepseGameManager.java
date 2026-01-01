@@ -36,6 +36,11 @@ public class PepseGameManager extends GameManager {
     public static final float CYCLE_LENGTH = 30f;
     private static final int SEED = 12345;
     private static final float HALF =0.5f ;
+
+    private static final int HALO_LAYER = Layer.BACKGROUND+2;
+    private static final int SUN_LAYER = Layer.BACKGROUND+1;
+    private static final int LEAF_LAYER = SUN_LAYER;
+
     private pepse.world.infinite.InfiniteWorldGenerator worldGen;
     private Avatar avatar;
 
@@ -62,34 +67,57 @@ public class PepseGameManager extends GameManager {
                                WindowController windowController) {
         super.initializeGame(imageReader, soundReader, inputListener, windowController);
         var windowDimensions=windowController.getWindowDimensions();
-
-        //sky
-        GameObject sky= Sky.create(windowDimensions);
-        gameObjects().addGameObject(sky, Layer.BACKGROUND);
-
-
-
-        // Sun + halo
-        GameObject sun= Sun.create(windowDimensions,CYCLE_LENGTH);
-        GameObject halo= SunHalo.create(sun);
-        gameObjects().addGameObject(halo, Layer.BACKGROUND+2);
-        gameObjects().addGameObject(sun, Layer.BACKGROUND+1);
-
-        //terrain
-        Terrain terrain = new Terrain(windowDimensions, SEED);
         int minX=0;
         int maxX=(int)windowController.getWindowDimensions().x();
+
+        // Sky.
+        createSky(windowDimensions);
+        // Sun + halo
+        createSunAndHalo(windowDimensions);
+        //Terrain
+        Terrain terrain = createTerrain(windowDimensions, minX, maxX);
+        // Night overlay on top of everything
+        createNight(windowDimensions);
+        // Avatar
+        this.avatar = createAvatar(windowDimensions, terrain, inputListener, imageReader);
+        // Energy UI
+        createEnergy(avatar);
+        // Tree
+        Flora flora = createFlora(terrain, minX, maxX);
+        // Infinite world generator initialization
+        this.worldGen = createInfiniteWorld(windowDimensions, terrain, flora);
+
+    }
+
+    private void createSky(Vector2 windowDimensions) {
+        GameObject sky= Sky.create(windowDimensions);
+        gameObjects().addGameObject(sky, Layer.BACKGROUND);
+    }
+
+    private void createSunAndHalo(Vector2 windowDimensions) {
+        GameObject sun= Sun.create(windowDimensions,CYCLE_LENGTH);
+        GameObject halo= SunHalo.create(sun);
+        gameObjects().addGameObject(halo, HALO_LAYER);
+        gameObjects().addGameObject(sun, SUN_LAYER);
+    }
+
+    private Terrain createTerrain(Vector2 windowDimensions, int minX, int maxX) {
+        Terrain terrain = new Terrain(windowDimensions, SEED);
         for(Block b : terrain.createInRange(minX, maxX)){
             gameObjects().addGameObject(b, Layer.STATIC_OBJECTS);
         }
+        return terrain;
+    }
 
-        // Night overlay on top of everything
+    private void createNight(Vector2 windowDimensions) {
         GameObject night = Night.create(windowDimensions, CYCLE_LENGTH);
         gameObjects().addGameObject(night, Layer.FOREGROUND);
+    }
 
-        // Avatar
+    private Avatar createAvatar(Vector2 windowDimensions,
+                                Terrain terrain, UserInputListener inputListener,
+                                ImageReader imageReader) {
         float initialX = (float)(Math.floor((windowDimensions.x()/2f) / Block.SIZE) * Block.SIZE);
-
 
         float halfW = Avatar.AVATAR_DIMENSIONS.x() / 2f;
         float leftX  = initialX - halfW;
@@ -104,19 +132,21 @@ public class PepseGameManager extends GameManager {
         float initialY = groundTopY - Avatar.AVATAR_DIMENSIONS.y();
         Vector2 initialAvatarLocation = new Vector2(initialX, initialY);
 
-         this.avatar = new Avatar(initialAvatarLocation, inputListener, imageReader);
+        Avatar avatar = new Avatar(initialAvatarLocation, inputListener, imageReader);
         setCamera(new Camera(avatar,
                 windowDimensions.mult(HALF).subtract(initialAvatarLocation)
                 ,windowDimensions
                 ,windowDimensions));
         gameObjects().addGameObject(avatar, Layer.DEFAULT);
+        return avatar;
+    }
 
-
-        // Energy UI
+    private void createEnergy(Avatar avatar) {
         GameObject energyDisplay = Energy.create(avatar::getEnergy);
         gameObjects().addGameObject(energyDisplay, Layer.UI);
+    }
 
-        // Tree
+    private Flora createFlora(Terrain terrain, int minX, int maxX) {
         Flora flora = new Flora(terrain::groundHeightAt,SEED);
         java.util.List<GameObject> trees = flora.createInRange(minX, maxX);
 
@@ -127,19 +157,23 @@ public class PepseGameManager extends GameManager {
                     gameObjects().addGameObject(obj, Layer.STATIC_OBJECTS);
                     break;
                 case LEAF_TAG:
-                    gameObjects().addGameObject(obj, Layer.STATIC_OBJECTS + 1);
+                    gameObjects().addGameObject(obj, LEAF_LAYER);
                     break;
                 case FRUIT_TAG:
                     gameObjects().addGameObject(obj, Layer.DEFAULT);
                     break;
             }
         }
-        // Infinite world generator initialization
+        return flora;
+    }
+
+    private pepse.world.infinite.InfiniteWorldGenerator
+    createInfiniteWorld(Vector2 windowDimensions, Terrain terrain, Flora flora) {
         int initialMinX = 0;
         int initialMaxX = (int) windowDimensions.x();
         int bufferPx = (int) (2 * windowDimensions.x());
 
-        worldGen = new pepse.world.infinite.InfiniteWorldGenerator(
+        return new pepse.world.infinite.InfiniteWorldGenerator(
                 gameObjects(),
                 terrain,
                 flora,
@@ -147,8 +181,8 @@ public class PepseGameManager extends GameManager {
                 initialMaxX,
                 bufferPx
         );
-
     }
+
 
     /**
      * Per-frame update: delegates to the infinite-world generator to expand the world

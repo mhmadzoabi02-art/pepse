@@ -22,6 +22,7 @@ public class Terrain {
     private static final int TERRAIN_DEPTH = 20;
     private static final Color BASE_GROUND_COLOR = new Color(212, 123, 74);
     private static final float TWO_THIRDS = (float) 2 /3 ;
+    private static final double TERRAIN_NOISE_FACTOR =  7.0;
     /** Tag used to identify ground blocks. */
     private final float groundHeightAtX0;
     private final HashSet<Integer> generatedColumns= new HashSet<>();
@@ -44,7 +45,7 @@ public class Terrain {
      * @return ground y coordinate at x.
      */
     public float groundHeightAt(float x){
-        double noise=noiseGenerator.noise(x,Block.SIZE*7.0);
+        double noise=noiseGenerator.noise(x,Block.SIZE*TERRAIN_NOISE_FACTOR);
         return groundHeightAtX0+(float)noise;
     }
     /**

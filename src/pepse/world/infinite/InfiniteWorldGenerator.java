@@ -23,6 +23,7 @@ import static pepse.PepseGameManager.*;
  */
 public class InfiniteWorldGenerator {
     private final Map<Integer, List<Spawned>> spawnedByColumnX = new HashMap<>();
+    private static final int LEAF_LAYER = Layer.STATIC_OBJECTS + 1;
 
     /** Tag for fruit objects. */
     private final GameObjectCollection gameObjects;
@@ -102,7 +103,7 @@ public class InfiniteWorldGenerator {
     private int layerFor(GameObject obj) {
         String tag = obj.getTag();
         if (TRUNK_TAG.equals(tag)) return Layer.STATIC_OBJECTS;
-        if (LEAF_TAG.equals(tag))  return Layer.STATIC_OBJECTS + 1;
+        if (LEAF_TAG.equals(tag))  return LEAF_LAYER;
         if (FRUIT_TAG.equals(tag)) return Layer.DEFAULT;
         return Layer.DEFAULT;
     }
