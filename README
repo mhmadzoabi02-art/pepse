@@ -92,7 +92,8 @@ pepse.world.avatar.Energy
 Responsibility: UI element that displays the Avatar’s current energy level.
 Design:
 Uses a callback / functional interface approach: it receives something like
-Supplier<Float> (in your code: avatar::getEnergy) so it pulls the latest value without the Avatar needing to know about UI.
+Supplier<Float> (in your code: avatar::getEnergy) so it pulls the latest value
+ without the Avatar needing to know about UI.
 This keeps low coupling between game logic (Avatar) and presentation (UI),
 and follows Separation of Concerns.
 Benefit: The Avatar remains focused on gameplay rules (movement, jump costs, regeneration),

@@ -229,20 +229,25 @@ public class Avatar extends GameObject {
         handleWallCollision(other, collision);
     }
     /**
-     * Called by the engine every frame while this avatar remains in contact with another {@link GameObject}.
+     * Called by the engine every frame while this avatar remains in
+     * contact with another {@link GameObject}.
      * <p>
      * This method delegates collision classification to dedicated handlers:
      * <ul>
-     *   <li>{@code handleStandCollision} detects "standing" contacts (landing on top of solid surfaces such as
+     *   <li>{@code handleStandCollision} detects "standing" contacts
+     *   (landing on top of solid surfaces such as
      *       ground or a trunk) and updates grounded state / cancels downward velocity as needed.</li>
-     *   <li>{@code handleWallCollision} detects "wall" contacts (side collisions with trunks) and updates wall flags
+     *   <li>{@code handleWallCollision} detects "wall" contacts
+     *   (side collisions with trunks) and updates wall flags
      *       used to block horizontal movement into the trunk.</li>
      * </ul>
-     * Keeping the collision logic inside {@code Avatar} preserves encapsulation: external classes do not need to
+     * Keeping the collision logic inside {@code Avatar} preserves
+     * encapsulation: external classes do not need to
      * know how collision normals are interpreted to determine standing vs. wall contact.
      *
      * @param other     the other object currently colliding with the avatar.
-     * @param collision collision information provided by the engine (e.g., collision normal).
+     * @param collision collision information provided by the
+     *                 engine (e.g., collision normal).
      */
     @Override
     public void onCollisionStay(GameObject other, Collision collision) {
